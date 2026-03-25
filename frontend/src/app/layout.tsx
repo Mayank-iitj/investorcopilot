@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import Link from 'next/link';
-import AuthNav from '@/components/AuthNav';
 
 export const metadata: Metadata = {
   title: 'AI Investor Copilot — Indian Stock Market Intelligence',
@@ -51,7 +50,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
 
             <div className="flex items-center gap-3">
-              <AuthNav />
+              <span className="px-3 py-1.5 rounded-xl text-xs font-semibold"
+                    style={{ background: 'rgba(34,197,94,0.12)', color: '#16a34a' }}>
+                Realtime Live
+              </span>
               <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white"
                    style={{ background: 'linear-gradient(135deg, #f5c542, #d4a017)' }}>
                 N

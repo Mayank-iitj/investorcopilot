@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import AlertPanel from '@/components/AlertPanel';
-import { getAuditLogsLimited, hasAuthToken } from '@/lib/api';
+import { getAuditLogsLimited } from '@/lib/api';
 
 export default function AlertsPage() {
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
@@ -12,12 +12,6 @@ export default function AlertsPage() {
   const [filterSymbol, setFilterSymbol] = useState<string>('');
 
   const fetchAuditLogs = useCallback(async () => {
-    if (!hasAuthToken()) {
-      setAuditLogs([]);
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
       const data = await getAuditLogsLimited(filterType || undefined, filterSymbol || undefined, 100);
@@ -73,7 +67,7 @@ export default function AlertsPage() {
               <div className="text-center py-12">
                 <p className="text-3xl mb-2">📝</p>
                 <p className="text-sm" style={{ color: '#9a9a9a' }}>
-                  {hasAuthToken() ? 'No audit logs yet. Scan signals or run backtests.' : 'Please login to view audit logs.'}
+                  No audit logs yet. Scan signals or run backtests.
                 </p>
               </div>
             ) : (

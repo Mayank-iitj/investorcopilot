@@ -7,7 +7,7 @@ import StockChart from '@/components/StockChart';
 import SignalCard from '@/components/SignalCard';
 import BacktestTable from '@/components/BacktestTable';
 import RecommendationPanel from '@/components/RecommendationPanel';
-import { getSignals, hasAuthToken, runBacktest, scanSignals } from '@/lib/api';
+import { getSignals, runBacktest, scanSignals } from '@/lib/api';
 
 const STRATEGIES = ['ma_crossover', 'rsi', 'macd', 'breakout', 'volume_spike'];
 
@@ -32,20 +32,12 @@ export default function StockDetailPage() {
   useEffect(() => { fetchSignals(); }, [fetchSignals]);
 
   async function handleScan() {
-    if (!hasAuthToken()) {
-      alert('Please login to run scans.');
-      return;
-    }
     setScanning(true);
     try { await scanSignals(symbol); await fetchSignals(); } catch (e) { console.error(e); }
     setScanning(false);
   }
 
   async function handleBacktest() {
-    if (!hasAuthToken()) {
-      alert('Please login to run backtests.');
-      return;
-    }
     setBacktesting(true);
     const results: any[] = [];
     try {

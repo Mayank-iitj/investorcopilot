@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 
@@ -40,26 +40,6 @@ def decode_token(token: str) -> dict[str, Any]:
 
 
 async def require_auth(token: str | None = Depends(oauth2_scheme)) -> dict[str, Any]:
-    """Protect sensitive routes when AUTH_ENABLED is true."""
-    if not settings.AUTH_ENABLED:
-        return {"sub": "anonymous", "role": "bypass"}
-
-    if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    try:
-        payload = decode_token(token)
-        subject = payload.get("sub")
-        if not subject:
-            raise ValueError("Token missing subject")
-        return payload
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"},
-        ) from exc
+    """Auth disabled: keep dependency for compatibility and always allow requests."""
+    _ = token
+    return {"sub": "anonymous", "role": "bypass"}

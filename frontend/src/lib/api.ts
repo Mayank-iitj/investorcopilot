@@ -1,17 +1,11 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
-const ENV_AUTH_TOKEN = process.env.NEXT_PUBLIC_AUTH_TOKEN || '';
-
-function getStoredToken(): string {
-  if (typeof window === 'undefined') return '';
-  return localStorage.getItem('auth_token') || '';
-}
 
 export function getAuthToken(): string {
-  return getStoredToken() || ENV_AUTH_TOKEN;
+  return '';
 }
 
 export function hasAuthToken(): boolean {
-  return Boolean(getAuthToken());
+  return true;
 }
 
 export function setAuthToken(token: string) {
@@ -25,11 +19,6 @@ export function setAuthToken(token: string) {
 
 function buildHeaders(options?: RequestInit): HeadersInit {
   const headers: Record<string, string> = {};
-  const token = getStoredToken() || ENV_AUTH_TOKEN;
-
-  if (token && !((options?.headers as Record<string, string> | undefined)?.Authorization)) {
-    headers.Authorization = `Bearer ${token}`;
-  }
 
   const hasContentType = Boolean((options?.headers as Record<string, string> | undefined)?.['Content-Type']);
   const isFormData = typeof FormData !== 'undefined' && options?.body instanceof FormData;

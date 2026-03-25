@@ -29,12 +29,6 @@ async def lifespan(app: FastAPI):
     if settings.AUTO_INIT_DB:
         await init_db()
 
-    if settings.ENVIRONMENT.lower() == "production" and settings.AUTH_ENABLED:
-        if settings.JWT_SECRET_KEY in {"", "change-me-in-production"}:
-            raise RuntimeError("JWT_SECRET_KEY must be a non-default value in production")
-        if not settings.ADMIN_PASSWORD_HASH:
-            raise RuntimeError("ADMIN_PASSWORD_HASH must be configured when AUTH_ENABLED=true")
-
     if settings.REALTIME_SCAN_INTERVAL_SECONDS < 30:
         raise RuntimeError("REALTIME_SCAN_INTERVAL_SECONDS must be >= 30")
 

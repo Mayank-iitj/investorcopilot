@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import PortfolioPie from '@/components/PortfolioPie';
-import { createPortfolio, getPortfolio, getPortfolioAnalysis, hasAuthToken, uploadPortfolioCsv } from '@/lib/api';
+import { createPortfolio, getPortfolio, getPortfolioAnalysis, uploadPortfolioCsv } from '@/lib/api';
 
 interface Holding { symbol: string; quantity: number; avg_buy_price: number; buy_date: string; sector?: string; }
 
@@ -23,7 +23,6 @@ export default function PortfolioPage() {
   useEffect(() => { loadPortfolio(); }, []);
 
   async function loadPortfolio() {
-    if (!hasAuthToken()) return;
     try {
       const data = await getPortfolio(1);
       if (data.holdings?.length > 0) {
@@ -34,10 +33,6 @@ export default function PortfolioPage() {
   }
 
   async function savePortfolio(h: Holding[]) {
-    if (!hasAuthToken()) {
-      alert('Please login to update portfolio.');
-      return;
-    }
     setLoading(true);
     try {
       const data = await createPortfolio(h);
@@ -48,20 +43,12 @@ export default function PortfolioPage() {
   }
 
   async function runAnalysis() {
-    if (!hasAuthToken()) {
-      alert('Please login to run portfolio analytics.');
-      return;
-    }
     if (!portfolioId) return; setAnalyzing(true);
     try { setAnalysis(await getPortfolioAnalysis(portfolioId)); } catch (e) { console.error(e); }
     setAnalyzing(false);
   }
 
   function addHolding() {
-    if (!hasAuthToken()) {
-      alert('Please login to add holdings.');
-      return;
-    }
     if (!formSymbol || !formQty || !formPrice) return;
     const sym = formSymbol.toUpperCase().includes('.NS') ? formSymbol.toUpperCase() : `${formSymbol.toUpperCase()}.NS`;
     const newH = [...holdings, { symbol: sym, quantity: parseInt(formQty), avg_buy_price: parseFloat(formPrice), buy_date: formDate || new Date().toISOString().split('T')[0] }];
@@ -75,26 +62,14 @@ export default function PortfolioPage() {
   }
 
   function openAddHoldingForm() {
-    if (!hasAuthToken()) {
-      alert('Please login to add holdings.');
-      return;
-    }
     setShowForm(!showForm);
   }
 
   function openCsvUpload() {
-    if (!hasAuthToken()) {
-      alert('Please login to upload portfolio data.');
-      return;
-    }
     fileRef.current?.click();
   }
 
   async function handleCSVUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    if (!hasAuthToken()) {
-      alert('Please login to upload portfolio data.');
-      return;
-    }
     const file = e.target.files?.[0]; if (!file) return; setLoading(true);
     try {
       const data = await uploadPortfolioCsv(file, 'Default');

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import SignalCard from '@/components/SignalCard';
 import AlertPanel from '@/components/AlertPanel';
-import { getImpactModel, getMarketOverview, getSignals, hasAuthToken, scanSignals } from '@/lib/api';
+import { getImpactModel, getMarketOverview, getSignals, scanSignals } from '@/lib/api';
 
 interface Signal {
   id: number;
@@ -60,10 +60,6 @@ export default function DashboardPage() {
 
   async function handleScan() {
     if (!scanSymbol.trim()) return;
-    if (!hasAuthToken()) {
-      setScanResult({ error: 'Please login to run realtime scans.' });
-      return;
-    }
     setScanning(true);
     setScanResult(null);
     try {
@@ -78,10 +74,6 @@ export default function DashboardPage() {
   }
 
   async function runJudgeDemo() {
-    if (!hasAuthToken()) {
-      setScanResult({ error: 'Please login to run the full judge demo actions.' });
-      return;
-    }
     setScanning(true);
     try {
       const demoSymbols = ['RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS'];
