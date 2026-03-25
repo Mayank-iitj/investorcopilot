@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface RecommendationPanelProps {
   symbol: string;
@@ -21,7 +21,7 @@ export default function RecommendationPanel({ symbol, portfolioId }: Recommendat
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function fetchRecommendation() {
+  const fetchRecommendation = useCallback(async () => {
     setLoading(true); setError(null);
     try {
       const url = `/api/recommendation/${symbol}${portfolioId ? `?portfolio_id=${portfolioId}` : ''}`;
@@ -30,9 +30,9 @@ export default function RecommendationPanel({ symbol, portfolioId }: Recommendat
       if (data.error) setError(data.error); else setRec(data);
     } catch (e) { setError(String(e)); }
     setLoading(false);
-  }
+  }, [symbol, portfolioId]);
 
-  useEffect(() => { fetchRecommendation(); }, [symbol, portfolioId]);
+  useEffect(() => { fetchRecommendation(); }, [fetchRecommendation]);
 
   const actionConfig = {
     BUY: { bg: 'rgba(34, 197, 94, 0.08)', border: 'rgba(34, 197, 94, 0.2)', text: '#16a34a', gradient: 'linear-gradient(135deg, #22c55e, #4ade80)', icon: '📈' },

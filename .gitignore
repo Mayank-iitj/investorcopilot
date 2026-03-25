@@ -13,6 +13,8 @@ out/
 # Env
 .env
 .env.local
+backend/.env
+frontend/.env
 
 # IDE
 .vscode/

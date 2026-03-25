@@ -11,9 +11,10 @@ async def websocket_alerts(websocket: WebSocket):
     await alert_manager.connect(websocket)
     try:
         while True:
-            # Keep connection alive; wait for messages from client
             data = await websocket.receive_text()
-            # Echo back as acknowledgment
-            await websocket.send_json({"type": "ack", "message": data})
+            if data.strip().lower() == "ping":
+                await websocket.send_json({"type": "pong"})
+            else:
+                await websocket.send_json({"type": "ack", "message": "received"})
     except WebSocketDisconnect:
         alert_manager.disconnect(websocket)

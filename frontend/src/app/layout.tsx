@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import Link from 'next/link';
+import AuthNav from '@/components/AuthNav';
 
 export const metadata: Metadata = {
   title: 'AI Investor Copilot — Indian Stock Market Intelligence',
@@ -50,10 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
 
             <div className="flex items-center gap-3">
-              <button className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:bg-black/5"
-                      style={{ background: 'rgba(0,0,0,0.04)' }}>
-                ⚙️
-              </button>
+              <AuthNav />
               <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white"
                    style={{ background: 'linear-gradient(135deg, #f5c542, #d4a017)' }}>
                 N

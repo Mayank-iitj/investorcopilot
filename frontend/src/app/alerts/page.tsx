@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import AlertPanel from '@/components/AlertPanel';
+import { getAuditLogsLimited, hasAuthToken } from '@/lib/api';
 
 export default function AlertsPage() {
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
@@ -9,20 +11,22 @@ export default function AlertsPage() {
   const [filterType, setFilterType] = useState<string>('');
   const [filterSymbol, setFilterSymbol] = useState<string>('');
 
-  useEffect(() => { fetchAuditLogs(); }, [filterType, filterSymbol]);
+  const fetchAuditLogs = useCallback(async () => {
+    if (!hasAuthToken()) {
+      setAuditLogs([]);
+      setLoading(false);
+      return;
+    }
 
-  async function fetchAuditLogs() {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (filterType) params.set('action_type', filterType);
-      if (filterSymbol) params.set('symbol', filterSymbol);
-      const res = await fetch(`/api/audit?${params.toString()}`);
-      const data = await res.json();
+      const data = await getAuditLogsLimited(filterType || undefined, filterSymbol || undefined, 100);
       setAuditLogs(data.audit_logs || []);
     } catch (e) { console.error(e); }
     setLoading(false);
-  }
+  }, [filterType, filterSymbol]);
+
+  useEffect(() => { fetchAuditLogs(); }, [fetchAuditLogs]);
 
   return (
     <div className="space-y-6">
@@ -68,7 +72,9 @@ export default function AlertsPage() {
             ) : auditLogs.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-3xl mb-2">📝</p>
-                <p className="text-sm" style={{ color: '#9a9a9a' }}>No audit logs yet. Scan signals or run backtests.</p>
+                <p className="text-sm" style={{ color: '#9a9a9a' }}>
+                  {hasAuthToken() ? 'No audit logs yet. Scan signals or run backtests.' : 'Please login to view audit logs.'}
+                </p>
               </div>
             ) : (
               <div className="max-h-[600px] overflow-y-auto">
@@ -82,7 +88,7 @@ export default function AlertsPage() {
                           : log.action === 'BACKTEST' ? 'bg-amber-100 text-amber-700'
                           : 'bg-gray-100 text-gray-600'
                         }`}>{log.action}</span>
-                        {log.stock && <a href={`/stock/${log.stock}`} className="text-sm font-semibold hover:underline" style={{ color: '#1a1a1a' }}>{log.stock.replace('.NS', '')}</a>}
+                        {log.stock && <Link href={`/stock/${log.stock}`} className="text-sm font-semibold hover:underline" style={{ color: '#1a1a1a' }}>{log.stock.replace('.NS', '')}</Link>}
                       </div>
                       <span className="text-[10px]" style={{ color: '#9a9a9a' }}>
                         {new Date(log.timestamp).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}

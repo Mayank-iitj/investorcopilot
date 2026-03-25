@@ -6,6 +6,7 @@ COPY package.json package-lock.json* ./
 RUN npm install --legacy-peer-deps
 
 COPY . .
+RUN mkdir -p /app/public
 RUN npm run build
 
 # Production image

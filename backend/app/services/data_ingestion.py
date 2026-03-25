@@ -1,4 +1,6 @@
 """Data Ingestion Engine — Real data from yfinance, Google News RSS, NSE filings."""
+import asyncio
+
 import yfinance as yf
 import feedparser
 import requests
@@ -12,6 +14,7 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.stock import Stock, StockPrice, NewsArticle, CorporateFiling
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +78,10 @@ async def ensure_stock(db: AsyncSession, symbol: str) -> Stock:
     if stock:
         return stock
 
-    info = get_stock_info_sync(symbol)
+    info = await asyncio.wait_for(
+        asyncio.to_thread(get_stock_info_sync, symbol),
+        timeout=settings.EXTERNAL_API_TIMEOUT_SECONDS,
+    )
     stock = Stock(
         symbol=symbol,
         name=info["name"],
@@ -91,7 +97,10 @@ async def ensure_stock(db: AsyncSession, symbol: str) -> Stock:
 async def ingest_ohlcv(db: AsyncSession, symbol: str, period: str = "2y") -> int:
     """Fetch and store OHLCV data. Returns count of rows stored."""
     stock = await ensure_stock(db, symbol)
-    df = fetch_ohlcv_sync(symbol, period)
+    df = await asyncio.wait_for(
+        asyncio.to_thread(fetch_ohlcv_sync, symbol, period),
+        timeout=settings.EXTERNAL_API_TIMEOUT_SECONDS,
+    )
     if df.empty:
         return 0
 
@@ -167,7 +176,10 @@ GOOGLE_NEWS_RSS = "https://news.google.com/rss/search?q={query}+stock+india&hl=e
 async def fetch_news(db: AsyncSession, query: str, limit: int = 20) -> list[dict]:
     """Fetch latest news from Google News RSS. Stores in DB."""
     url = GOOGLE_NEWS_RSS.format(query=query.replace(" ", "+"))
-    feed = feedparser.parse(url)
+    feed = await asyncio.wait_for(
+        asyncio.to_thread(feedparser.parse, url),
+        timeout=settings.EXTERNAL_API_TIMEOUT_SECONDS,
+    )
 
     articles = []
     for entry in feed.entries[:limit]:

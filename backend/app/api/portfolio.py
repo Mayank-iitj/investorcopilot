@@ -1,8 +1,7 @@
 """API Routes — Portfolio Management & Analysis"""
-from fastapi import APIRouter, Depends, UploadFile, File, Query
+from fastapi import APIRouter, Depends, UploadFile, File, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from typing import Optional
 import csv
 import io
 
@@ -10,14 +9,19 @@ from app.database import get_db
 from app.models.portfolio import Portfolio, Holding
 from app.services.portfolio import analyze_portfolio
 from app.services.data_ingestion import SECTOR_MAP
+from app.services.auth import require_auth
+from app.services.rate_limit import limiter
 
 router = APIRouter()
 
 
 @router.post("/portfolio")
+@limiter.limit("30/minute")
 async def create_or_update_portfolio(
+    request: Request,
     holdings: list[dict] = None,
     name: str = Query("Default", description="Portfolio name"),
+    _user: dict = Depends(require_auth),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -25,6 +29,8 @@ async def create_or_update_portfolio(
     
     Body: list of {"symbol": "RELIANCE.NS", "quantity": 10, "avg_buy_price": 2500, "buy_date": "2024-01-15"}
     """
+    _ = request, _user
+
     if not holdings:
         holdings = []
 
@@ -60,15 +66,20 @@ async def create_or_update_portfolio(
 
 
 @router.post("/portfolio/upload-csv")
+@limiter.limit("10/minute")
 async def upload_portfolio_csv(
+    request: Request,
     file: UploadFile = File(...),
     name: str = Query("Default", description="Portfolio name"),
+    _user: dict = Depends(require_auth),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Upload portfolio as CSV file.
     Expected columns: symbol, quantity, avg_buy_price, buy_date (optional), sector (optional)
     """
+    _ = request, _user
+
     content = await file.read()
     text = content.decode("utf-8")
     reader = csv.DictReader(io.StringIO(text))

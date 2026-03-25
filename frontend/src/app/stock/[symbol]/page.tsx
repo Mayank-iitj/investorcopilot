@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import StockChart from '@/components/StockChart';
 import SignalCard from '@/components/SignalCard';
 import BacktestTable from '@/components/BacktestTable';
 import RecommendationPanel from '@/components/RecommendationPanel';
+import { getSignals, hasAuthToken, runBacktest, scanSignals } from '@/lib/api';
 
 const STRATEGIES = ['ma_crossover', 'rsi', 'macd', 'breakout', 'volume_spike'];
 
@@ -21,29 +22,35 @@ export default function StockDetailPage() {
   const [backtesting, setBacktesting] = useState(false);
   const [activeTab, setActiveTab] = useState<'signals' | 'backtest' | 'recommendation'>('signals');
 
-  useEffect(() => { fetchSignals(); }, [symbol]);
-
-  async function fetchSignals() {
+  const fetchSignals = useCallback(async () => {
     try {
-      const res = await fetch(`/api/signals?symbol=${symbol}`);
-      const data = await res.json();
+      const data = await getSignals(symbol);
       setSignals(data.signals || []);
     } catch (e) { console.error(e); }
-  }
+  }, [symbol]);
+
+  useEffect(() => { fetchSignals(); }, [fetchSignals]);
 
   async function handleScan() {
+    if (!hasAuthToken()) {
+      alert('Please login to run scans.');
+      return;
+    }
     setScanning(true);
-    try { await fetch(`/api/signals/scan?symbol=${symbol}`, { method: 'POST' }); await fetchSignals(); } catch (e) { console.error(e); }
+    try { await scanSignals(symbol); await fetchSignals(); } catch (e) { console.error(e); }
     setScanning(false);
   }
 
   async function handleBacktest() {
+    if (!hasAuthToken()) {
+      alert('Please login to run backtests.');
+      return;
+    }
     setBacktesting(true);
     const results: any[] = [];
     try {
       for (const strategy of STRATEGIES) {
-        const res = await fetch(`/api/backtest/run?strategy=${strategy}&symbol=${symbol}&years=2&hold_days=10`, { method: 'POST' });
-        const data = await res.json();
+        const data = await runBacktest(strategy, symbol, 2, 10);
         if (data.strategy_name) {
           results.push({ strategy: data.strategy_name, symbol: data.symbol, total_trades: data.total_trades, winning_trades: data.winning_trades, win_rate: data.win_rate_pct, avg_return_pct: data.avg_return_pct, max_drawdown_pct: data.max_drawdown_pct, sharpe_ratio: data.sharpe_ratio });
         }

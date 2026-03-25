@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import SignalCard from '@/components/SignalCard';
 import AlertPanel from '@/components/AlertPanel';
+import { getImpactModel, getMarketOverview, getSignals, hasAuthToken, scanSignals } from '@/lib/api';
 
 interface Signal {
   id: number;
@@ -37,20 +38,20 @@ export default function DashboardPage() {
   const [scanSymbol, setScanSymbol] = useState('RELIANCE.NS');
   const [scanResult, setScanResult] = useState<any>(null);
   const [impact, setImpact] = useState<any>(null);
+  const [trustTimestamp, setTrustTimestamp] = useState('');
 
   useEffect(() => { fetchDashboard(); }, []);
 
   async function fetchDashboard() {
     setLoading(true);
     try {
-      const [sigRes, mktRes] = await Promise.allSettled([
-        fetch('/api/signals').then((r) => r.json()),
-        fetch('/api/market-overview').then((r) => r.json()),
-      ]);
+      const [sigRes, mktRes] = await Promise.allSettled([getSignals(), getMarketOverview()]);
       if (sigRes.status === 'fulfilled') setSignals(sigRes.value.signals || []);
       if (mktRes.status === 'fulfilled') setMarket(mktRes.value.market_overview || {});
-      const impactRes = await fetch('/api/backtest/impact-model').then((r) => r.json()).catch(() => null);
+
+      const impactRes = await getImpactModel().catch(() => null);
       if (impactRes?.impact_model) setImpact(impactRes.impact_model);
+      setTrustTimestamp(new Date().toLocaleString('en-IN'));
     } catch (e) {
       console.error('Dashboard fetch error:', e);
     }
@@ -59,18 +60,44 @@ export default function DashboardPage() {
 
   async function handleScan() {
     if (!scanSymbol.trim()) return;
+    if (!hasAuthToken()) {
+      setScanResult({ error: 'Please login to run realtime scans.' });
+      return;
+    }
     setScanning(true);
     setScanResult(null);
     try {
-      const res = await fetch(`/api/signals/scan?symbol=${scanSymbol}`, { method: 'POST' });
-      const data = await res.json();
+      const data = await scanSignals(scanSymbol);
       setScanResult(data);
-      const sigRes = await fetch('/api/signals').then((r) => r.json());
+      const sigRes = await getSignals();
       setSignals(sigRes.signals || []);
     } catch (e) {
       setScanResult({ error: String(e) });
     }
     setScanning(false);
+  }
+
+  async function runJudgeDemo() {
+    if (!hasAuthToken()) {
+      setScanResult({ error: 'Please login to run the full judge demo actions.' });
+      return;
+    }
+    setScanning(true);
+    try {
+      const demoSymbols = ['RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS'];
+      let total = 0;
+      for (const symbol of demoSymbols) {
+        const result = await scanSignals(symbol);
+        total += result?.signals_detected || 0;
+      }
+      setScanResult({ symbol: 'Demo Watchlist', signals_detected: total, signals: [] });
+      const sigRes = await getSignals();
+      setSignals(sigRes.signals || []);
+    } catch (e) {
+      setScanResult({ error: String(e) });
+    } finally {
+      setScanning(false);
+    }
   }
 
   const buyCount = signals.filter((s) => s.direction === 'BUY').length;
@@ -181,6 +208,9 @@ export default function DashboardPage() {
               '🚀 Scan for Signals'
             )}
           </button>
+          <button onClick={runJudgeDemo} disabled={scanning} className="btn-secondary disabled:opacity-50">
+            🏁 Run Judge Demo
+          </button>
         </div>
 
         {scanResult && (
@@ -191,7 +221,15 @@ export default function DashboardPage() {
               <>
                 <p className="text-sm font-medium" style={{ color: '#1a1a1a' }}>
                   Found <span className="font-bold" style={{ color: '#d4a017' }}>{scanResult.signals_detected}</span> signals
-                  for <Link href={`/stock/${scanResult.symbol}`} className="font-bold hover:underline" style={{ color: '#d4a017' }}>{scanResult.symbol?.replace('.NS', '')}</Link>
+                  for {scanResult.symbol?.includes('.NS') ? (
+                    <Link href={`/stock/${scanResult.symbol}`} className="font-bold hover:underline" style={{ color: '#d4a017' }}>
+                      {scanResult.symbol?.replace('.NS', '')}
+                    </Link>
+                  ) : (
+                    <span className="font-bold" style={{ color: '#d4a017' }}>
+                      {scanResult.symbol}
+                    </span>
+                  )}
                 </p>
                 {scanResult.signals?.slice(0, 3).map((s: any, i: number) => (
                   <div key={i} className={`mt-2 p-3 rounded-xl ${s.direction === 'BUY' ? 'signal-buy' : 'signal-sell'}`}>
@@ -209,6 +247,24 @@ export default function DashboardPage() {
             )}
           </div>
         )}
+      </div>
+
+      <div className="glass-card">
+        <h2 className="text-lg font-semibold mb-3" style={{ color: '#1a1a1a' }}>✅ Data Provenance</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+          <div className="p-3 rounded-xl" style={{ background: 'rgba(0,0,0,0.02)' }}>
+            <p style={{ color: '#9a9a9a' }}>Market Source</p>
+            <p style={{ color: '#1a1a1a' }}>Yahoo Finance / NSE</p>
+          </div>
+          <div className="p-3 rounded-xl" style={{ background: 'rgba(0,0,0,0.02)' }}>
+            <p style={{ color: '#9a9a9a' }}>Algorithms</p>
+            <p style={{ color: '#1a1a1a' }}>SMA, RSI, MACD, Breakout, Volume</p>
+          </div>
+          <div className="p-3 rounded-xl" style={{ background: 'rgba(0,0,0,0.02)' }}>
+            <p style={{ color: '#9a9a9a' }}>Last UI Refresh</p>
+            <p style={{ color: '#1a1a1a' }}>{trustTimestamp || 'Pending'}</p>
+          </div>
+        </div>
       </div>
 
       {/* Three-column layout */}

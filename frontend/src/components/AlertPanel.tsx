@@ -13,6 +13,9 @@ interface Alert {
   timestamp: string;
 }
 
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || '';
+const ENABLE_POLL_FALLBACK = (process.env.NEXT_PUBLIC_ENABLE_ALERT_POLLING || 'true') === 'true';
+
 interface AlertPanelProps {
   maxAlerts?: number;
   showHistorical?: boolean;
@@ -24,60 +27,127 @@ export default function AlertPanel({ maxAlerts = 50, showHistorical = true }: Al
   const [filter, setFilter] = useState<'ALL' | 'BUY' | 'SELL'>('ALL');
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeout = useRef<any>(null);
+  const pollInterval = useRef<any>(null);
+  const seenIds = useRef<Set<string>>(new Set());
+
+  const addAlerts = useCallback((incoming: Alert[]) => {
+    setAlerts((prev) => {
+      const merged = [...incoming, ...prev];
+      const unique: Alert[] = [];
+      for (const item of merged) {
+        if (seenIds.current.has(item.id)) continue;
+        seenIds.current.add(item.id);
+        unique.push(item);
+        if (unique.length >= maxAlerts) break;
+      }
+      return unique;
+    });
+  }, [maxAlerts]);
+
+  const toAlert = useCallback((raw: any): Alert | null => {
+    const payload = raw?.data ?? raw;
+    const stock = payload?.stock || payload?.symbol || 'Unknown';
+    const direction = payload?.direction || payload?.action || 'INFO';
+    const rule = payload?.rule || payload?.message || '';
+    const timestamp = payload?.timestamp || new Date().toISOString();
+    const id = payload?.id || `${stock}-${direction}-${rule}-${timestamp}`;
+
+    if (!rule && !payload?.type && !payload?.signal_type) return null;
+
+    return {
+      id,
+      stock,
+      type: payload?.type || payload?.signal_type || 'signal',
+      direction,
+      rule,
+      price: payload?.price,
+      timestamp,
+    };
+  }, []);
+
+  const pollLatest = useCallback(async () => {
+    if (!ENABLE_POLL_FALLBACK) return;
+    try {
+      const res = await fetch('/api/audit?action_type=SIGNAL&limit=15', { cache: 'no-store' });
+      const data = await res.json();
+      const incoming: Alert[] = (data.audit_logs || [])
+        .map((log: any) => {
+          const output = log.output || {};
+          return {
+            id: `audit-${log.id}`,
+            stock: log.stock || output.stock || 'Unknown',
+            type: output.type || output.signal_type || 'signal',
+            direction: output.direction || 'INFO',
+            rule: output.rule || log.logic || '',
+            price: output.price,
+            timestamp: log.timestamp,
+          } as Alert;
+        });
+      addAlerts(incoming);
+    } catch {}
+  }, [addAlerts]);
 
   const connect = useCallback(() => {
     try {
       const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
       const host = window.location.host;
-      const ws = new WebSocket(`${protocol}://${host}/ws/alerts`);
+      const target = WS_URL || `${protocol}://${host}/ws/alerts`;
+      const ws = new WebSocket(target);
       ws.onopen = () => setConnected(true);
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          const alert: Alert = {
-            id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-            stock: data.stock || data.symbol || 'Unknown',
-            type: data.type || data.signal_type || 'signal',
-            direction: data.direction || 'INFO',
-            rule: data.rule || data.message || '',
-            price: data.price,
-            timestamp: data.timestamp || new Date().toISOString(),
-          };
-          setAlerts((prev) => [alert, ...prev].slice(0, maxAlerts));
+          const alert = toAlert(data);
+          if (alert) addAlerts([alert]);
         } catch {}
       };
-      ws.onclose = () => { setConnected(false); reconnectTimeout.current = setTimeout(connect, 3000); };
+      ws.onclose = () => {
+        setConnected(false);
+        reconnectTimeout.current = setTimeout(connect, 3000);
+      };
       ws.onerror = () => ws.close();
       wsRef.current = ws;
     } catch {
       setConnected(false);
       reconnectTimeout.current = setTimeout(connect, 3000);
     }
-  }, [maxAlerts]);
+  }, [addAlerts, toAlert]);
 
   useEffect(() => {
     connect();
-    return () => { if (wsRef.current) wsRef.current.close(); if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current); };
-  }, [connect]);
+    if (ENABLE_POLL_FALLBACK) {
+      pollLatest();
+      pollInterval.current = setInterval(pollLatest, 15000);
+    }
+
+    return () => {
+      if (wsRef.current) wsRef.current.close();
+      if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
+      if (pollInterval.current) clearInterval(pollInterval.current);
+    };
+  }, [connect, pollLatest]);
 
   useEffect(() => {
     if (!showHistorical) return;
     async function loadHistorical() {
       try {
-        const res = await fetch('/api/audit?action_type=SIGNAL&limit=30');
+        const res = await fetch('/api/audit?action_type=SIGNAL&limit=30', { cache: 'no-store' });
         const data = await res.json();
         if (data.audit_logs) {
           const historical: Alert[] = data.audit_logs.map((log: any) => ({
-            id: `hist-${log.id}`, stock: log.stock || 'Unknown', type: log.rules?.type || 'signal',
-            direction: log.output?.direction || 'INFO', rule: log.rules?.rule || log.logic || '',
+            id: `audit-${log.id}`,
+            stock: log.stock || 'Unknown',
+            type: log.output?.type || log.output?.signal_type || 'signal',
+            direction: log.output?.direction || 'INFO',
+            rule: log.output?.rule || log.logic || '',
             price: log.output?.price, timestamp: log.timestamp,
           }));
-          setAlerts((prev) => [...prev, ...historical].slice(0, maxAlerts));
+          addAlerts(historical);
         }
       } catch {}
     }
     loadHistorical();
-  }, [showHistorical, maxAlerts]);
+  }, [showHistorical, addAlerts]);
 
   const filtered = filter === 'ALL' ? alerts : alerts.filter((a) => a.direction === filter);
 

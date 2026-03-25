@@ -1,17 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import PortfolioPie from '@/components/PortfolioPie';
+import { createPortfolio, getPortfolio, getPortfolioAnalysis, hasAuthToken, uploadPortfolioCsv } from '@/lib/api';
 
 interface Holding { symbol: string; quantity: number; avg_buy_price: number; buy_date: string; sector?: string; }
-
-const SAMPLE_HOLDINGS: Holding[] = [
-  { symbol: 'RELIANCE.NS', quantity: 20, avg_buy_price: 2450, buy_date: '2024-06-15', sector: 'Energy' },
-  { symbol: 'TCS.NS', quantity: 15, avg_buy_price: 3800, buy_date: '2024-03-10', sector: 'IT' },
-  { symbol: 'HDFCBANK.NS', quantity: 30, avg_buy_price: 1550, buy_date: '2024-01-20', sector: 'Banking' },
-  { symbol: 'INFY.NS', quantity: 25, avg_buy_price: 1450, buy_date: '2024-05-05', sector: 'IT' },
-  { symbol: 'ITC.NS', quantity: 100, avg_buy_price: 430, buy_date: '2024-02-18', sector: 'FMCG' },
-];
 
 export default function PortfolioPage() {
   const [holdings, setHoldings] = useState<Holding[]>([]);
@@ -29,33 +23,83 @@ export default function PortfolioPage() {
   useEffect(() => { loadPortfolio(); }, []);
 
   async function loadPortfolio() {
-    try { const res = await fetch('/api/portfolio/1'); const data = await res.json(); if (data.holdings?.length > 0) { setHoldings(data.holdings); setPortfolioId(data.id); } } catch {}
+    if (!hasAuthToken()) return;
+    try {
+      const data = await getPortfolio(1);
+      if (data.holdings?.length > 0) {
+        setHoldings(data.holdings);
+        setPortfolioId(data.id);
+      }
+    } catch {}
   }
 
   async function savePortfolio(h: Holding[]) {
+    if (!hasAuthToken()) {
+      alert('Please login to update portfolio.');
+      return;
+    }
     setLoading(true);
-    try { const res = await fetch('/api/portfolio', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(h) }); const data = await res.json(); setPortfolioId(data.portfolio_id); setHoldings(h); } catch (e) { console.error(e); }
+    try {
+      const data = await createPortfolio(h);
+      setPortfolioId(data.portfolio_id);
+      setHoldings(h);
+    } catch (e) { console.error(e); }
     setLoading(false);
   }
 
   async function runAnalysis() {
+    if (!hasAuthToken()) {
+      alert('Please login to run portfolio analytics.');
+      return;
+    }
     if (!portfolioId) return; setAnalyzing(true);
-    try { const res = await fetch(`/api/portfolio-analysis?portfolio_id=${portfolioId}`); setAnalysis(await res.json()); } catch (e) { console.error(e); }
+    try { setAnalysis(await getPortfolioAnalysis(portfolioId)); } catch (e) { console.error(e); }
     setAnalyzing(false);
   }
 
   function addHolding() {
+    if (!hasAuthToken()) {
+      alert('Please login to add holdings.');
+      return;
+    }
     if (!formSymbol || !formQty || !formPrice) return;
     const sym = formSymbol.toUpperCase().includes('.NS') ? formSymbol.toUpperCase() : `${formSymbol.toUpperCase()}.NS`;
     const newH = [...holdings, { symbol: sym, quantity: parseInt(formQty), avg_buy_price: parseFloat(formPrice), buy_date: formDate || new Date().toISOString().split('T')[0] }];
     setHoldings(newH); setFormSymbol(''); setFormQty(''); setFormPrice(''); setFormDate(''); setShowForm(false); savePortfolio(newH);
   }
 
-  function removeHolding(idx: number) { const u = holdings.filter((_, i) => i !== idx); setHoldings(u); if (u.length > 0) savePortfolio(u); }
+  function removeHolding(idx: number) {
+    const u = holdings.filter((_, i) => i !== idx);
+    setHoldings(u);
+    savePortfolio(u);
+  }
+
+  function openAddHoldingForm() {
+    if (!hasAuthToken()) {
+      alert('Please login to add holdings.');
+      return;
+    }
+    setShowForm(!showForm);
+  }
+
+  function openCsvUpload() {
+    if (!hasAuthToken()) {
+      alert('Please login to upload portfolio data.');
+      return;
+    }
+    fileRef.current?.click();
+  }
 
   async function handleCSVUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!hasAuthToken()) {
+      alert('Please login to upload portfolio data.');
+      return;
+    }
     const file = e.target.files?.[0]; if (!file) return; setLoading(true);
-    try { const fd = new FormData(); fd.append('file', file); const res = await fetch('/api/portfolio/upload-csv?name=Default', { method: 'POST', body: fd }); const data = await res.json(); if (data.holdings) { setHoldings(data.holdings); setPortfolioId(data.portfolio_id); } } catch (e) { console.error(e); }
+    try {
+      const data = await uploadPortfolioCsv(file, 'Default');
+      if (data.holdings) { setHoldings(data.holdings); setPortfolioId(data.portfolio_id); }
+    } catch (e) { console.error(e); }
     setLoading(false);
   }
 
@@ -72,10 +116,9 @@ export default function PortfolioPage() {
           <p className="mt-1" style={{ color: '#6b6b6b' }}>Manage holdings, track allocation, and measure risk</p>
         </div>
         <div className="flex gap-3">
-          <button onClick={() => setShowForm(!showForm)} className="btn-primary">➕ Add Holding</button>
-          <button onClick={() => fileRef.current?.click()} className="btn-secondary">📄 Upload CSV</button>
+          <button onClick={openAddHoldingForm} className="btn-primary">➕ Add Holding</button>
+          <button onClick={openCsvUpload} className="btn-secondary">📄 Upload CSV</button>
           <input ref={fileRef} type="file" accept=".csv" onChange={handleCSVUpload} className="hidden" />
-          {holdings.length === 0 && <button onClick={() => savePortfolio(SAMPLE_HOLDINGS)} className="btn-secondary">📋 Load Sample</button>}
         </div>
       </div>
 
@@ -128,7 +171,7 @@ export default function PortfolioPage() {
               <tbody>
                 {holdings.map((h, i) => (
                   <tr key={i} className="hover:bg-amber-50/50 transition-colors group">
-                    <td className="table-cell"><a href={`/stock/${h.symbol}`} className="font-semibold hover:underline" style={{ color: '#1a1a1a' }}>{h.symbol.replace('.NS', '')}</a></td>
+                    <td className="table-cell"><Link href={`/stock/${h.symbol}`} className="font-semibold hover:underline" style={{ color: '#1a1a1a' }}>{h.symbol.replace('.NS', '')}</Link></td>
                     <td className="table-cell font-mono" style={{ color: '#4a4a4a' }}>{h.quantity}</td>
                     <td className="table-cell font-mono" style={{ color: '#4a4a4a' }}>₹{h.avg_buy_price.toLocaleString('en-IN')}</td>
                     <td className="table-cell font-mono font-medium" style={{ color: '#1a1a1a' }}>₹{(h.quantity * h.avg_buy_price).toLocaleString('en-IN')}</td>
@@ -195,10 +238,10 @@ export default function PortfolioPage() {
         <div className="card-warm text-center py-16">
           <p className="text-5xl mb-4">💼</p>
           <h2 className="text-xl font-bold mb-2" style={{ color: '#1a1a1a' }}>No Portfolio Yet</h2>
-          <p className="mb-6 max-w-md mx-auto" style={{ color: '#6b6b6b' }}>Add holdings manually, upload a CSV, or load a sample portfolio.</p>
+          <p className="mb-6 max-w-md mx-auto" style={{ color: '#6b6b6b' }}>Add real holdings manually or upload your broker export CSV.</p>
           <div className="flex gap-3 justify-center">
-            <button onClick={() => setShowForm(true)} className="btn-primary">➕ Add Holdings</button>
-            <button onClick={() => savePortfolio(SAMPLE_HOLDINGS)} className="btn-secondary">📋 Load Sample</button>
+            <button onClick={openAddHoldingForm} className="btn-primary">➕ Add Holdings</button>
+            <button onClick={openCsvUpload} className="btn-secondary">📄 Upload CSV</button>
           </div>
         </div>
       )}

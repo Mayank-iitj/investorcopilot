@@ -1,10 +1,12 @@
 """API Routes — Backtesting"""
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
 from app.database import get_db
 from app.services.backtester import run_backtest, get_backtest_results
+from app.services.auth import require_auth
+from app.services.rate_limit import limiter
 
 router = APIRouter()
 
@@ -21,11 +23,14 @@ async def get_backtest(
 
 
 @router.post("/backtest/run")
+@limiter.limit("20/minute")
 async def execute_backtest(
+    request: Request,
     strategy: str = Query(..., description="Strategy name: ma_crossover, rsi, macd, breakout, volume_spike"),
     symbol: str = Query(..., description="Stock symbol e.g. RELIANCE.NS"),
     years: int = Query(2, description="Number of years to backtest"),
     hold_days: int = Query(10, description="Hold period in trading days"),
+    _user: dict = Depends(require_auth),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -33,6 +38,8 @@ async def execute_backtest(
     Returns: win rate, avg return, max drawdown, Sharpe ratio, trade log.
     All computed from real historical OHLCV data.
     """
+    _ = request, _user
+
     result = await run_backtest(db, strategy, symbol, years=years, hold_days=hold_days)
     return result
 

@@ -1,5 +1,5 @@
 """API Routes — Signal Detection & Scanning"""
-from fastapi import APIRouter, Depends, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
@@ -7,7 +7,8 @@ from app.database import get_db
 from app.services.signals import scan_stock, get_latest_signals, ALL_STRATEGIES
 from app.services.data_ingestion import ingest_ohlcv
 from app.services.alerts import alert_manager
-from app.config import settings
+from app.services.auth import require_auth
+from app.services.rate_limit import limiter
 
 router = APIRouter()
 
@@ -43,10 +44,12 @@ async def list_signals(
 
 
 @router.post("/signals/scan")
+@limiter.limit("20/minute")
 async def scan_signals(
+    request: Request,
     symbol: str = Query(..., description="Stock symbol e.g. RELIANCE.NS"),
     strategies: Optional[str] = Query(None, description="Comma-separated strategy names"),
-    background_tasks: BackgroundTasks = BackgroundTasks(),
+    _user: dict = Depends(require_auth),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -54,6 +57,8 @@ async def scan_signals(
     Auto-ingests OHLCV data if not present.
     Returns detected signals with full audit trail.
     """
+    _ = request, _user
+
     # Ensure we have data
     await ingest_ohlcv(db, symbol)
 
