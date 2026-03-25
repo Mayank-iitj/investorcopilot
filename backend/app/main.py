@@ -101,10 +101,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=allowed_hosts,
-)
+# Only enforce host validation in production with explicit TRUSTED_HOSTS
+if settings.ENVIRONMENT.lower() == "production" and settings.TRUSTED_HOSTS:
+    app.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=allowed_hosts,
+    )
 
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.add_middleware(SlowAPIMiddleware)

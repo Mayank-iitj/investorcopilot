@@ -15,7 +15,7 @@ class Settings(BaseSettings):
 
     # Security / networking
     CORS_ORIGINS: str = "http://localhost:3000"
-    TRUSTED_HOSTS: str = "localhost,127.0.0.1,testserver"
+    TRUSTED_HOSTS: str = "localhost,127.0.0.1,testserver,*.onrender.com,*.vercel.app"
 
     # Authentication / authorization
     AUTH_ENABLED: bool = False
