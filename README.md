@@ -140,7 +140,7 @@ docker compose run --rm backend python -c "from passlib.context import CryptCont
 
 **Backend:** Python 3.11, FastAPI, SQLAlchemy (async), yfinance, pandas, numpy, scipy, feedparser, BeautifulSoup4
 
-**Frontend:** Next.js 14, React 18, TypeScript, TailwindCSS, Recharts, TradingView Lightweight Charts
+**Frontend:** Next.js 15, React 18, TypeScript, TailwindCSS, Recharts, TradingView Lightweight Charts
 
 **Infrastructure:** Docker, PostgreSQL (optional, SQLite default), Redis (optional)
 
@@ -202,11 +202,19 @@ Recommended production topology:
 - PostgreSQL managed database
 
 ### Frontend (Vercel)
+`frontend/vercel.json` is included so Vercel always uses deterministic install/build commands.
+
 Set these Vercel environment variables in the `frontend` project:
 - `NEXT_SERVER_API_URL=https://<your-backend-domain>`
 - `NEXT_PUBLIC_API_URL=` (keep empty to use `/api` rewrites)
 - `NEXT_PUBLIC_WS_URL=wss://<your-backend-domain>/ws/alerts`
 - `NEXT_PUBLIC_ENABLE_ALERT_POLLING=true`
+
+Important for monorepo setup in Vercel:
+- Root Directory: `frontend`
+- Install Command: `npm ci`
+- Build Command: `npm run build`
+- Output Directory: leave empty (Next.js default)
 
 ### Backend (production host)
 Set these minimum variables:
@@ -217,6 +225,10 @@ Set these minimum variables:
 - `ADMIN_PASSWORD_HASH=<bcrypt-hash>`
 - `CORS_ORIGINS=https://<your-vercel-app-domain>`
 - `TRUSTED_HOSTS=<your-backend-domain>`
+
+Deploy health checks to verify immediately after release:
+- `GET https://<your-backend-domain>/api/health`
+- `GET https://<your-backend-domain>/metrics`
 
 ### Important
 - Vercel serverless functions are not ideal for persistent websocket backends.
@@ -243,11 +255,47 @@ This repo includes `render.yaml` for one-click deployment of both services.
 3. Set secrets during setup:
      - `DATABASE_URL` from Neon
      - `ADMIN_PASSWORD_HASH` (bcrypt hash)
+     - `CORS_ORIGINS=https://<your-frontend-domain>`
+     - `TRUSTED_HOSTS=<your-backend-domain>`
+     - `NEXT_SERVER_API_URL=https://<your-backend-domain>`
+     - `NEXT_PUBLIC_WS_URL=wss://<your-backend-domain>/ws/alerts`
 4. After deploy, update in backend env:
      - `CORS_ORIGINS` to your real frontend URL
      - `TRUSTED_HOSTS` to your real backend host
 
 Tip: Keep `NEXT_PUBLIC_ENABLE_ALERT_POLLING=true` for resilience during free-tier cold starts.
+
+Strict post-deploy smoke test:
+```bash
+# frontend should render
+curl -I https://<your-frontend-domain>
+
+# backend should be healthy
+curl https://<your-backend-domain>/api/health
+
+# websocket endpoint should be reachable (HTTP upgrade expected)
+curl -I https://<your-backend-domain>/ws/alerts
+```
+
+## 📦 Dependency Reliability
+
+Use deterministic installs in all environments:
+
+```bash
+# frontend
+cd frontend
+npm ci
+npx eslint .
+npm run build
+
+# backend
+cd ../backend
+pip install -r requirements.txt
+pip check
+pytest -q
+```
+
+If Windows reports `EPERM` while reinstalling frontend packages, close running Node/Next processes and remove `frontend/node_modules` before running `npm ci` again.
 
 ## 🏆 Judge Demo Flow
 
