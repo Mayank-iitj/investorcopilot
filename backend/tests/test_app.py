@@ -1,4 +1,10 @@
+from pathlib import Path
+import sys
+
 from fastapi.testclient import TestClient
+
+# Ensure `app` is importable in local and CI runners regardless of cwd.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.main import app
 
