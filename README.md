@@ -47,7 +47,7 @@ Production-grade AI platform for Indian stock markets (NSE/BSE) with **real data
 ---
 
 ## 🚀 Quick Start (Local)
-
+$root="C:/Users/MS/.gemini/antigravity/scratch/ai-investor-copilot"; Start-Process pwsh -ArgumentList "-NoExit","-Command","Set-Location $root/backend; python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000"; Start-Sleep 3; Start-Process pwsh -ArgumentList "-NoExit","-Command","Set-Location $root/frontend; npm run dev"; Start-Sleep 8; Start-Process "http://127.0.0.1:3000"; Start-Process "http://127.0.0.1:8000/docs"
 ### 0) Configure environment files
 ```bash
 cp backend/.env.example backend/.env
