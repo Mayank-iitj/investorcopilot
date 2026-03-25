@@ -5,18 +5,16 @@ Every signal is computed from actual OHLCV data, with:
   - Data snapshot (JSON) for audit
   - Timestamp
 """
-import pandas as pd
-import numpy as np
-from datetime import datetime
-from typing import Optional
 import logging
 
+import numpy as np
+import pandas as pd
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.signal import Signal
-from app.models.audit import AuditLog
-from app.services.data_ingestion import get_prices_df, ensure_stock
 from app.config import settings
+from app.models.audit import AuditLog
+from app.models.signal import Signal
+from app.services.data_ingestion import ensure_stock, get_prices_df
 
 logger = logging.getLogger(__name__)
 

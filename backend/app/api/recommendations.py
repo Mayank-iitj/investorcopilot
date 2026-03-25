@@ -2,16 +2,15 @@
 import asyncio
 
 from fastapi import APIRouter, Depends, Query, Request
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from typing import Optional
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
-from app.services.decision import get_recommendation
 from app.models.audit import AuditLog
 from app.services.auth import require_auth
+from app.services.decision import get_recommendation
 from app.services.rate_limit import limiter
-from app.config import settings
 
 router = APIRouter()
 
@@ -19,7 +18,7 @@ router = APIRouter()
 @router.get("/recommendation/{stock}")
 async def recommend(
     stock: str,
-    portfolio_id: Optional[int] = Query(None, description="Portfolio ID for context"),
+    portfolio_id: int | None = Query(None, description="Portfolio ID for context"),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -33,8 +32,8 @@ async def recommend(
 
 @router.get("/audit")
 async def audit_log(
-    action_type: Optional[str] = Query(None, description="Filter: SIGNAL, RECOMMENDATION, BACKTEST"),
-    symbol: Optional[str] = Query(None, description="Filter by stock symbol"),
+    action_type: str | None = Query(None, description="Filter: SIGNAL, RECOMMENDATION, BACKTEST"),
+    symbol: str | None = Query(None, description="Filter by stock symbol"),
     limit: int = Query(50, le=200),
     _user: dict = Depends(require_auth),
     db: AsyncSession = Depends(get_db),
@@ -53,15 +52,15 @@ async def audit_log(
 
     return {
         "audit_logs": [{
-            "id": l.id,
-            "action": l.action_type,
-            "stock": l.stock_symbol,
-            "input": l.input_data,
-            "rules": l.rules_triggered,
-            "logic": l.logic_used,
-            "output": l.output,
-            "timestamp": str(l.created_at),
-        } for l in logs],
+            "id": log.id,
+            "action": log.action_type,
+            "stock": log.stock_symbol,
+            "input": log.input_data,
+            "rules": log.rules_triggered,
+            "logic": log.logic_used,
+            "output": log.output,
+            "timestamp": str(log.created_at),
+        } for log in logs],
         "count": len(logs),
     }
 

@@ -8,18 +8,17 @@ Computes:
   - Beta (covariance / variance)  
   - Correlation matrix  
 """
-import pandas as pd
-import numpy as np
-from scipy.optimize import brentq
-from datetime import date, timedelta, datetime
-from typing import Optional
 import logging
+from datetime import date, timedelta
 
+import numpy as np
+import pandas as pd
+from scipy.optimize import brentq
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.portfolio import Portfolio, Holding
-from app.services.data_ingestion import fetch_ohlcv_sync, SECTOR_MAP, get_prices_df, ensure_stock
+from app.models.portfolio import Holding
+from app.services.data_ingestion import SECTOR_MAP, get_prices_df
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +27,7 @@ logger = logging.getLogger(__name__)
 #  XIRR Computation (real formula, NOT fake)
 # ──────────────────────────────────────────────────────────────
 
-def compute_xirr(cashflows: list[tuple[date, float]], guess: float = 0.1) -> Optional[float]:
+def compute_xirr(cashflows: list[tuple[date, float]], guess: float = 0.1) -> float | None:
     """
     Compute XIRR (Extended Internal Rate of Return).
     cashflows: list of (date, amount) tuples. Negative = outflow, positive = inflow.
@@ -38,7 +37,6 @@ def compute_xirr(cashflows: list[tuple[date, float]], guess: float = 0.1) -> Opt
         return None
 
     dates = [cf[0] for cf in cashflows]
-    amounts = [cf[1] for cf in cashflows]
     d0 = min(dates)
 
     def xnpv(rate):
@@ -117,7 +115,7 @@ def compute_volatility(returns: pd.Series) -> float:
     return float(returns.std() * np.sqrt(252) * 100)
 
 
-def compute_beta(stock_returns: pd.Series, market_returns: pd.Series) -> Optional[float]:
+def compute_beta(stock_returns: pd.Series, market_returns: pd.Series) -> float | None:
     """Compute beta = Cov(stock, market) / Var(market)."""
     if len(stock_returns) < 10 or len(market_returns) < 10:
         return None

@@ -8,15 +8,14 @@ NO hallucination. No random confidence scores.
 """
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.signal import Signal
+from app.models.audit import AuditLog
 from app.models.backtest import BacktestResult
 from app.models.portfolio import Holding
-from app.models.audit import AuditLog
+from app.models.signal import Signal
 from app.services.data_ingestion import SECTOR_MAP
 
 logger = logging.getLogger(__name__)
@@ -25,7 +24,7 @@ logger = logging.getLogger(__name__)
 async def get_recommendation(
     db: AsyncSession,
     symbol: str,
-    portfolio_id: Optional[int] = None,
+    portfolio_id: int | None = None,
 ) -> dict:
     """
     Generate a recommendation for a stock.

@@ -1,20 +1,17 @@
 """Data Ingestion Engine — Real data from yfinance, Google News RSS, NSE filings."""
 import asyncio
-
-import yfinance as yf
-import feedparser
-import requests
-from bs4 import BeautifulSoup
-from datetime import datetime, timedelta, date
-from typing import Optional
 import logging
-import pandas as pd
+from datetime import datetime
 
-from sqlalchemy import select, and_
+import feedparser
+import pandas as pd
+import requests
+import yfinance as yf
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.stock import Stock, StockPrice, NewsArticle, CorporateFiling
 from app.config import settings
+from app.models.stock import CorporateFiling, NewsArticle, Stock, StockPrice
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,6 @@
 """WebSocket endpoint for real-time alerts."""
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
 from app.services.alerts import alert_manager
 
 router = APIRouter()

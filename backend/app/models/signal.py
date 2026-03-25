@@ -1,5 +1,6 @@
 """ORM models for trading signals."""
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text, func, JSON
+from sqlalchemy import JSON, Column, DateTime, Float, Integer, String, Text, func
+
 from app.database import Base
 
 

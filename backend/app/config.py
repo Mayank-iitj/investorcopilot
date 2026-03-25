@@ -1,6 +1,6 @@
 """AI Investor Copilot — Configuration"""
-from pydantic_settings import BaseSettings
-from typing import Optional
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -35,16 +35,16 @@ class Settings(BaseSettings):
     # Observability
     ENABLE_METRICS: bool = True
     ENABLE_SENTRY: bool = False
-    SENTRY_DSN: Optional[str] = None
+    SENTRY_DSN: str | None = None
     
     # Redis (optional)
-    REDIS_URL: Optional[str] = None
+    REDIS_URL: str | None = None
     
     # API Keys (optional)
-    NEWS_API_KEY: Optional[str] = None
-    ALPHA_VANTAGE_KEY: Optional[str] = None
-    TELEGRAM_BOT_TOKEN: Optional[str] = None
-    TELEGRAM_CHAT_ID: Optional[str] = None
+    NEWS_API_KEY: str | None = None
+    ALPHA_VANTAGE_KEY: str | None = None
+    TELEGRAM_BOT_TOKEN: str | None = None
+    TELEGRAM_CHAT_ID: str | None = None
     
     # Signal defaults
     RSI_OVERBOUGHT: float = 70.0
@@ -73,9 +73,10 @@ class Settings(BaseSettings):
     def trusted_hosts_list(self) -> list[str]:
         return [host.strip() for host in self.TRUSTED_HOSTS.split(",") if host.strip()]
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+    )
 
 
 settings = Settings()

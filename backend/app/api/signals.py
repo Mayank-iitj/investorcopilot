@@ -1,21 +1,21 @@
 """API Routes — Signal Detection & Scanning"""
+
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional
 
 from app.database import get_db
-from app.services.signals import scan_stock, get_latest_signals, ALL_STRATEGIES
-from app.services.data_ingestion import ingest_ohlcv
 from app.services.alerts import alert_manager
 from app.services.auth import require_auth
+from app.services.data_ingestion import ingest_ohlcv
 from app.services.rate_limit import limiter
+from app.services.signals import ALL_STRATEGIES, get_latest_signals, scan_stock
 
 router = APIRouter()
 
 
 @router.get("/signals")
 async def list_signals(
-    symbol: Optional[str] = Query(None, description="Stock symbol e.g. RELIANCE.NS"),
+    symbol: str | None = Query(None, description="Stock symbol e.g. RELIANCE.NS"),
     db: AsyncSession = Depends(get_db),
 ):
     """Get stored signals. If symbol provided, filter by stock."""
@@ -24,6 +24,7 @@ async def list_signals(
     else:
         # Return recent signals across all stocks
         from sqlalchemy import select
+
         from app.models.signal import Signal
         result = await db.execute(
             select(Signal).order_by(Signal.created_at.desc()).limit(50)
@@ -48,7 +49,7 @@ async def list_signals(
 async def scan_signals(
     request: Request,
     symbol: str = Query(..., description="Stock symbol e.g. RELIANCE.NS"),
-    strategies: Optional[str] = Query(None, description="Comma-separated strategy names"),
+    strategies: str | None = Query(None, description="Comma-separated strategy names"),
     _user: dict = Depends(require_auth),
     db: AsyncSession = Depends(get_db),
 ):

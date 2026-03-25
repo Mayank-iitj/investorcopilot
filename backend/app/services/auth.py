@@ -57,9 +57,9 @@ async def require_auth(token: str | None = Depends(oauth2_scheme)) -> dict[str, 
         if not subject:
             raise ValueError("Token missing subject")
         return payload
-    except Exception:
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from exc

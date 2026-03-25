@@ -3,19 +3,20 @@ import asyncio
 import contextlib
 import logging
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 from pythonjsonlogger import jsonlogger
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from slowapi import _rate_limit_exceeded_handler
-from starlette.middleware.trustedhost import TrustedHostMiddleware
 from sqlalchemy import text
-from app.database import init_db
-from app.database import async_session
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+
 from app.config import settings
+from app.database import async_session, init_db
 from app.services.rate_limit import limiter
 from app.tasks.scheduler import run_realtime_scan_loop
 
@@ -112,12 +113,12 @@ if settings.ENABLE_METRICS:
     Instrumentator().instrument(app).expose(app, include_in_schema=False)
 
 # ── Register API routers ──────────────────────────────────────────────
-from app.api import signals as signals_router      # noqa: E402
+from app.api import auth as auth_router  # noqa: E402
+from app.api import backtest as backtest_router  # noqa: E402
 from app.api import portfolio as portfolio_router  # noqa: E402
-from app.api import backtest as backtest_router    # noqa: E402
 from app.api import recommendations as rec_router  # noqa: E402
-from app.api import websocket as ws_router         # noqa: E402
-from app.api import auth as auth_router            # noqa: E402
+from app.api import signals as signals_router  # noqa: E402
+from app.api import websocket as ws_router  # noqa: E402
 
 app.include_router(auth_router.router, prefix="/api", tags=["Auth"])
 app.include_router(signals_router.router, prefix="/api", tags=["Signals"])
@@ -147,4 +148,4 @@ async def health():
         raise HTTPException(
             status_code=503,
             detail={"status": "degraded", "database": "down", "environment": settings.ENVIRONMENT},
-        )
+        ) from exc

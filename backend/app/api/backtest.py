@@ -1,11 +1,11 @@
 """API Routes — Backtesting"""
+
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional
 
 from app.database import get_db
-from app.services.backtester import run_backtest, get_backtest_results
 from app.services.auth import require_auth
+from app.services.backtester import get_backtest_results, run_backtest
 from app.services.rate_limit import limiter
 
 router = APIRouter()
@@ -14,7 +14,7 @@ router = APIRouter()
 @router.get("/backtest/{strategy}")
 async def get_backtest(
     strategy: str,
-    symbol: Optional[str] = Query(None, description="Filter by stock symbol"),
+    symbol: str | None = Query(None, description="Filter by stock symbol"),
     db: AsyncSession = Depends(get_db),
 ):
     """Get stored backtest results for a strategy."""
@@ -53,6 +53,7 @@ async def impact_model(
     Shows: if user followed signals → X% return.
     """
     from sqlalchemy import select
+
     from app.models.backtest import BacktestResult
     
     result = await db.execute(select(BacktestResult).order_by(BacktestResult.created_at.desc()).limit(100))

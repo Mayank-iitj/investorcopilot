@@ -1,15 +1,16 @@
 """API Routes — Portfolio Management & Analysis"""
-from fastapi import APIRouter, Depends, UploadFile, File, Query, Request
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 import csv
 import io
 
+from fastapi import APIRouter, Depends, File, Query, Request, UploadFile
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.database import get_db
-from app.models.portfolio import Portfolio, Holding
-from app.services.portfolio import analyze_portfolio
-from app.services.data_ingestion import SECTOR_MAP
+from app.models.portfolio import Holding, Portfolio
 from app.services.auth import require_auth
+from app.services.data_ingestion import SECTOR_MAP
+from app.services.portfolio import analyze_portfolio
 from app.services.rate_limit import limiter
 
 router = APIRouter()

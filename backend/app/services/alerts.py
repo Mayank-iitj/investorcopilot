@@ -1,8 +1,6 @@
 """Alert System — WebSocket manager for real-time signal broadcasting."""
-import asyncio
-import json
 import logging
-from typing import Optional
+
 from fastapi import WebSocket
 
 logger = logging.getLogger(__name__)

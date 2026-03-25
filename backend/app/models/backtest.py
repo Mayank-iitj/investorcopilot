@@ -1,5 +1,6 @@
 """ORM models for backtest results."""
-from sqlalchemy import Column, Integer, String, Float, Date, DateTime, JSON, func
+from sqlalchemy import JSON, Column, Date, DateTime, Float, Integer, String, func
+
 from app.database import Base
 
 

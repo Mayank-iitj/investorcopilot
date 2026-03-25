@@ -9,23 +9,24 @@ For every strategy, compute:
 
 NO fake backtests. All math from pandas + numpy.
 """
-import pandas as pd
-import numpy as np
-from datetime import date, timedelta
-from typing import Optional
 import logging
 
+import numpy as np
+import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.backtest import BacktestResult
-from app.models.audit import AuditLog
-from app.services.signals import (
-    detect_ma_crossover, detect_rsi_signals, detect_macd_crossover,
-    detect_breakout, detect_volume_spike
-)
-from app.services.data_ingestion import get_prices_df, ingest_ohlcv, ensure_stock
 from app.config import settings
+from app.models.audit import AuditLog
+from app.models.backtest import BacktestResult
+from app.services.data_ingestion import ensure_stock, get_prices_df, ingest_ohlcv
+from app.services.signals import (
+    detect_breakout,
+    detect_ma_crossover,
+    detect_macd_crossover,
+    detect_rsi_signals,
+    detect_volume_spike,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ def _compute_max_drawdown(equity_curve: pd.Series) -> float:
     return float(drawdown.min()) * 100  # as percentage
 
 
-def _compute_sharpe(returns: list[float], risk_free_annual: float = 0.06) -> Optional[float]:
+def _compute_sharpe(returns: list[float], risk_free_annual: float = 0.06) -> float | None:
     """Compute annualized Sharpe ratio. Indian risk-free ~ 6%."""
     if len(returns) < 2:
         return None
@@ -49,7 +50,6 @@ def _compute_sharpe(returns: list[float], risk_free_annual: float = 0.06) -> Opt
     if std_ret == 0:
         return None
     # Assume ~250 trading days
-    trades_per_year = 250 / max(1, len(returns))
     annualized_ret = mean_ret * (250 / max(1, len(returns)))
     annualized_std = std_ret * np.sqrt(250 / max(1, len(returns)))
     return float((annualized_ret - risk_free_annual) / annualized_std)
@@ -122,7 +122,7 @@ async def run_backtest(
     years = years or settings.DEFAULT_BACKTEST_YEARS
 
     # Ensure data exists
-    stock = await ensure_stock(db, symbol)
+    await ensure_stock(db, symbol)
     df = await get_prices_df(db, symbol)
     if df.empty:
         await ingest_ohlcv(db, symbol, period=f"{years}y")

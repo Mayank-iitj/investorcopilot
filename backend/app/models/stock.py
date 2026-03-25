@@ -1,6 +1,7 @@
 """ORM models for stocks and price data."""
-from sqlalchemy import Column, Integer, String, Float, Date, DateTime, BigInteger, func
+from sqlalchemy import BigInteger, Column, Date, DateTime, Float, Integer, String, func
 from sqlalchemy.orm import relationship
+
 from app.database import Base
 
 
