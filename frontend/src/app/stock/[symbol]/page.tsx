@@ -7,6 +7,7 @@ import StockChart from '@/components/StockChart';
 import SignalCard from '@/components/SignalCard';
 import BacktestTable from '@/components/BacktestTable';
 import RecommendationPanel from '@/components/RecommendationPanel';
+import GroqInsightsPanel from '@/components/GroqInsightsPanel';
 import { getSignals, runBacktest, scanSignals } from '@/lib/api';
 
 const STRATEGIES = ['ma_crossover', 'rsi', 'macd', 'breakout', 'volume_spike'];
@@ -20,7 +21,7 @@ export default function StockDetailPage() {
   const [backtestResults, setBacktestResults] = useState<any[]>([]);
   const [scanning, setScanning] = useState(false);
   const [backtesting, setBacktesting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'signals' | 'backtest' | 'recommendation'>('signals');
+  const [activeTab, setActiveTab] = useState<'signals' | 'backtest' | 'recommendation' | 'groq'>('signals');
 
   const fetchSignals = useCallback(async () => {
     try {
@@ -56,6 +57,7 @@ export default function StockDetailPage() {
     { key: 'signals', label: '⚡ Signals', count: signals.length },
     { key: 'backtest', label: '🧪 Backtest', count: backtestResults.length },
     { key: 'recommendation', label: '🤖 AI Verdict' },
+    { key: 'groq', label: '✨ Groq Insights' },
   ] as const;
 
   return (
@@ -113,6 +115,7 @@ export default function StockDetailPage() {
         )}
         {activeTab === 'backtest' && <BacktestTable results={backtestResults} title={`Backtest Results — ${displayName}`} />}
         {activeTab === 'recommendation' && <RecommendationPanel symbol={symbol} />}
+        {activeTab === 'groq' && <GroqInsightsPanel symbol={symbol} />}
       </div>
     </div>
   );

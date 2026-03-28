@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     ALPHA_VANTAGE_KEY: str | None = None
     TELEGRAM_BOT_TOKEN: str | None = None
     TELEGRAM_CHAT_ID: str | None = None
+    OPENROUTER_API_KEY: str | None = None
     
     # Signal defaults
     RSI_OVERBOUGHT: float = 70.0
