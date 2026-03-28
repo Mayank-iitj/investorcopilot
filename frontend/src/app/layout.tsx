@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import Link from 'next/link';
+import BackendStatusToast from '@/components/BackendStatusToast';
 
 export const metadata: Metadata = {
   title: 'AI Investor Copilot — Indian Stock Market Intelligence',
@@ -74,6 +75,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="max-w-7xl mx-auto px-6 relative z-10 animate-fade-in">
             {children}
           </div>
+          <BackendStatusToast />
         </main>
       </body>
     </html>
